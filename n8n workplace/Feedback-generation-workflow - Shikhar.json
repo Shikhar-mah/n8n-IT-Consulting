@@ -1,0 +1,863 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/knowlegde",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2128,
+        448
+      ],
+      "id": "2f22902f-caf5-4709-b6ca-594e45b9ce6d",
+      "name": "Webhook",
+      "webhookId": "b7406593-df01-4fcb-863e-4bb76275cd41"
+    },
+    {
+      "parameters": {
+        "model": "arcee-ai/trinity-large-preview:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        368
+      ],
+      "id": "9dace20f-ea44-4710-8724-394bbcd84ff9",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "ydVZsp5acikGCI3N",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b7f33c41-4b9c-40c5-95f1-da9166661844",
+              "leftValue": "={{ $json.knowledge_base_update_required }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -432,
+        256
+      ],
+      "id": "f89280fe-b27a-42d0-bf4c-aaffb2b8e1a1",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.issue_text }}{{ $json.problems }}",
+        "options": {
+          "systemMessage": "=You are an IT support improvement agent. You are an expert at detecting similarities between different issues related to laptops. \n\nYour task is to check if {{ $json.issue_text }} is similar to any entries in here [ {{ $json.problems }} ] and then decide the following\n\nDecide:\n1) Is this a recurring issue? (true/false; has something similar happened previously? read all and decide)\n2) Should knowledge base be updated? (true/false; if the recurring is false then the knowledge base needs to be update hence it has to be true, otherwise false it will be false)\n\nRespond strictly in JSON format:\n{\n    \"recurring\": true/false,\n    \"kb_update_required\": true/false           \n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1008,
+        144
+      ],
+      "id": "0a4052eb-df5d-4b96-aef4-915a63bdf6ca",
+      "name": "Check similarity"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "knowledge_base",
+        "returnAll": true,
+        "matchType": "allFilters"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1456,
+        256
+      ],
+      "id": "b3a75e60-ff82-4f55-9523-930be1f429d0",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YhhYiwQkQAmkNf3U",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n// Get all incoming items\nconst items = $input.all();\n\nlet issueText = $('Update_Ticket_info').first().json.issue_text;\n// let issueText = $('Update a row').first().json.issue_text;\nlet problems = [];\n\n// Loop through all inputs\nfor (const item of items) {\n  const data = item.json;\n\n  // From \"Update Ticket info\" node\n  if (data.issue_text) {\n    issueText = data.issue_text;\n  }\n\n  // From \"Get many rows\" node\n  if (data.problem) {\n    problems.push(data.problem);\n  }\n}\n\n// Return combined result\nreturn [\n  {\n    json: {\n      issue_text: issueText,\n      problems: problems\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        256
+      ],
+      "id": "95565987-460b-4a23-8514-a5053506b4ea",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n// Get raw AI output\nlet text = item.output || \"\";\n\n// Remove markdown ```json and ```\ntext = text\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .replace(/^[^{]*\\{/s, \"{\")\n  .replace(/\\}[^}]*$/s, \"}\")\n  .trim();\n\n// Parse cleaned JSON safely\nlet aiData = {};\ntry {\n  aiData = JSON.parse(text);\n} catch (e) {\n  throw new Error(\"Invalid AI JSON: \" + text);\n}\n\n// Generate ticket ID only if ticket required\nlet ticketId = null;\nif (aiData.create_ticket === \"Yes\") {\n  const randomNum = Math.floor(1000 + Math.random() * 9000);\n  ticketId = `TCKT-${randomNum}`;\n}\n\nreturn [\n  {\n    json: {\n      ...item,\n\n      // AI fields\n      // create_ticket: aiData.create_ticket,\n      knowledge_base_update_required: aiData.kb_update_required,\n\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        256
+      ],
+      "id": "edea9055-e6cb-48b3-ad1b-38e1e678ea82",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "tableId": "knowledge_base",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "problem",
+              "fieldValue": "={{ $('Update_Ticket_info').first().json.issue_text }}"
+            },
+            {
+              "fieldId": "solution_steps",
+              "fieldValue": "={{ $('Update_Ticket_info').first().json.ai_steps }}"
+            },
+            {
+              "fieldId": "category",
+              "fieldValue": "={{ $('Update_Ticket_info').first().json.ai_category }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        160
+      ],
+      "id": "a45ea1cc-6909-4202-9098-83d6eade7152",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YhhYiwQkQAmkNf3U",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "tickets",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ticket_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.body.ticket_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "feedback_rating",
+              "fieldValue": "={{ $json.body.feedback_rating }}"
+            },
+            {
+              "fieldId": "feedback_comment",
+              "fieldValue": "={{ $json.body.feedback_comment }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1904,
+        448
+      ],
+      "id": "5bd959b3-d3f8-433c-a691-5c7a2d53cfec",
+      "name": "Update_Ticket_info",
+      "alwaysOutputData": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "YhhYiwQkQAmkNf3U",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        240,
+        160
+      ],
+      "id": "69b5cff0-56e7-4372-9ad8-bdb21094e62d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "87953029-8e9e-4304-b913-f63f8f764e4c",
+              "name": "Status",
+              "value": "Success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        352
+      ],
+      "id": "37a822b7-333c-4dfb-bbf5-a65d8e04524d",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "87953029-8e9e-4304-b913-f63f8f764e4c",
+              "name": "Status",
+              "value": "Success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        16,
+        160
+      ],
+      "id": "7d2886a9-1cfa-4220-a8f0-9efb75b57d3a",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        16,
+        352
+      ],
+      "id": "c52cbf44-f068-4225-851c-f11278ce731a",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "model": "arcee-ai/trinity-large-preview:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        880
+      ],
+      "id": "6dab2533-83fc-4b11-9b88-5b1c8697c59b",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "ydVZsp5acikGCI3N",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b7f33c41-4b9c-40c5-95f1-da9166661844",
+              "leftValue": "={{ $json.knowledge_base_update_required }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -432,
+        656
+      ],
+      "id": "6bf4f92c-b3f2-4c62-8124-4909e51bd3d1",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.issue_text }}{{ $json.problems }}",
+        "options": {
+          "systemMessage": "=You are an IT support improvement agent. You are an expert at detecting similarities between different issues related to laptops. \n\nYour task is to check if {{ $json.issue_text }} is similar to any entries in here [ {{ $json.problems }} ] and then decide the following\n\nDecide:\n1) Is this a recurring issue? (true/false; has something similar happened previously? read all and decide)\n2) Should knowledge base be updated? (true/false; if the recurring is false then the knowledge base needs to be update hence it has to be true, otherwise false it will be false)\n\nRespond strictly in JSON format:\n{\n    \"recurring\": true/false,\n    \"kb_update_required\": true/false           \n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1008,
+        656
+      ],
+      "id": "d56a837f-8486-4cf3-ba70-252470d15709",
+      "name": "Check similarity1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n// Get raw AI output\nlet text = item.output || \"\";\n\n// Remove markdown ```json and ```\ntext = text\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .replace(/^[^{]*\\{/s, \"{\")\n  .replace(/\\}[^}]*$/s, \"}\")\n  .trim();\n\n// Parse cleaned JSON safely\nlet aiData = {};\ntry {\n  aiData = JSON.parse(text);\n} catch (e) {\n  throw new Error(\"Invalid AI JSON: \" + text);\n}\n\n// Generate ticket ID only if ticket required\nlet ticketId = null;\nif (aiData.create_ticket === \"Yes\") {\n  const randomNum = Math.floor(1000 + Math.random() * 9000);\n  ticketId = `TCKT-${randomNum}`;\n}\n\nreturn [\n  {\n    json: {\n      ...item,\n\n      // AI fields\n      // create_ticket: aiData.create_ticket,\n      knowledge_base_update_required: aiData.kb_update_required,\n\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        656
+      ],
+      "id": "ce307f51-768c-4b5d-ba2d-e2c595257766",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "tableId": "knowledge_base",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "problem",
+              "fieldValue": "={{ $('Update_Ticket_info1').first().json.issue_text }}"
+            },
+            {
+              "fieldId": "solution_steps",
+              "fieldValue": "={{ $('Update_Ticket_info1').first().json.ai_steps }}"
+            },
+            {
+              "fieldId": "category",
+              "fieldValue": "={{ $('Update_Ticket_info1').first().json.ai_category }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        544
+      ],
+      "id": "b6761077-b6cd-44ac-b807-758eb975df57",
+      "name": "Create a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YhhYiwQkQAmkNf3U",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n// Get all incoming items\nconst items = $input.all();\n\nlet issueText = $('Update_Ticket_info').first().json.issue_text;\n// let issueText = $('Update a row').first().json.issue_text;\nlet problems = [];\n\n// Loop through all inputs\nfor (const item of items) {\n  const data = item.json;\n\n  // From \"Update Ticket info\" node\n  if (data.issue_text) {\n    issueText = data.issue_text;\n  }\n\n  // From \"Get many rows\" node\n  if (data.problem) {\n    problems.push(data.problem);\n  }\n}\n\n// Return combined result\nreturn [\n  {\n    json: {\n      issue_text: issueText,\n      problems: problems\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        656
+      ],
+      "id": "98bd077b-227a-491f-bae9-52a3ce427eeb",
+      "name": "Making array of problems in knowledge base"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "knowledge_base",
+        "returnAll": true,
+        "matchType": "allFilters"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1456,
+        656
+      ],
+      "id": "6c5ea169-2215-490c-a40c-59aaec1eefa8",
+      "name": "get all data from knowledge base",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YhhYiwQkQAmkNf3U",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        240,
+        544
+      ],
+      "id": "c4165d29-515a-466d-b574-8fabc79ef4ed",
+      "name": "Respond to Webhook4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3faca969-de17-4240-8442-d31d1d813750",
+              "name": "Status",
+              "value": "Less Rating",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        16,
+        544
+      ],
+      "id": "e1740f0c-7ba3-416b-8297-9f08a5643c1a",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        16,
+        752
+      ],
+      "id": "f6bfb18d-2c35-48ff-921b-27ed19010987",
+      "name": "Respond to Webhook5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3faca969-de17-4240-8442-d31d1d813750",
+              "name": "Status",
+              "value": "Less Rating",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        752
+      ],
+      "id": "ab07f47b-ed60-43ca-9c09-cc661c051d25",
+      "name": "Edit Fields5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "83b39b1e-8d9a-4545-811f-9fed166e753b",
+              "leftValue": "={{ $json.feedback_rating }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1680,
+        448
+      ],
+      "id": "19148ef1-e6dc-44e5-8c9a-7e167e6bc99e",
+      "name": "Check if the rating is more than 3"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Update_Ticket_info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Check similarity",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check similarity": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Check similarity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update_Ticket_info": {
+      "main": [
+        [
+          {
+            "node": "Check if the rating is more than 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Check similarity1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Create a row1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check similarity1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Making array of problems in knowledge base": {
+      "main": [
+        [
+          {
+            "node": "Check similarity1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get all data from knowledge base": {
+      "main": [
+        [
+          {
+            "node": "Making array of problems in knowledge base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if the rating is more than 3": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get all data from knowledge base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "shikhar-mah.app.n8n.cloud",
+          "user-agent": "python-requests/2.32.5",
+          "content-length": "141",
+          "accept": "*/*",
+          "accept-encoding": "gzip, br",
+          "cdn-loop": "cloudflare; loops=1; subreqs=1",
+          "cf-connecting-ip": "125.22.183.214",
+          "cf-ew-via": "15",
+          "cf-ipcountry": "IN",
+          "cf-ray": "9cf45ac0c37c1da9-BOM",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "cf-worker": "n8n.cloud",
+          "content-type": "application/json",
+          "x-forwarded-for": "125.22.183.214, 172.70.218.169",
+          "x-forwarded-host": "shikhar-mah.app.n8n.cloud",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "traefik-prod-users-gwc-28-7b57cfbbf9-4ckpg",
+          "x-is-trusted": "yes",
+          "x-real-ip": "125.22.183.214"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "ticket_id": "TCKT-1093",
+          "feedback_rating": 3,
+          "feedback_comment": "Somewhat. The staff was cooperative but rude. Interesting combination"
+        },
+        "webhookUrl": "https://shikhar-mah.app.n8n.cloud/webhook/knowlegde",
+        "executionMode": "production"
+      }
+    ],
+    "Respond to Webhook": [
+      {
+        "Status": "Success"
+      }
+    ],
+    "Respond to Webhook1": [
+      {
+        "Status": "Success"
+      }
+    ],
+    "Respond to Webhook4": [
+      {
+        "Status": "Less Rating"
+      }
+    ],
+    "Respond to Webhook5": [
+      {
+        "Status": "Less Rating"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cf3e476c962230f546f4d4b5966e70d0aceba5899c08de428c9cddb0619506e1"
+  }
+}
