@@ -1,0 +1,242 @@
+{
+  "name": "n8n-Task1",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0e8f26b0-8aef-4c74-8333-fc67f1c58928",
+              "leftValue": "={{ $json.valid_email }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "9099d6c6-b7e7-4474-8d97-5c80d8461a00",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1IKky6C5wDDmPj83_h3XFHfbOCSto4IT6OpRa2m-1wr4",
+          "mode": "list",
+          "cachedResultName": "Invalid_Valid-name-email",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IKky6C5wDDmPj83_h3XFHfbOCSto4IT6OpRa2m-1wr4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Valid",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IKky6C5wDDmPj83_h3XFHfbOCSto4IT6OpRa2m-1wr4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "fbcaebee-23f7-43c2-8865-1e9e0c74ec26",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Zt7zp4Vfi7dTcrrM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1IKky6C5wDDmPj83_h3XFHfbOCSto4IT6OpRa2m-1wr4",
+          "mode": "list",
+          "cachedResultName": "Invalid_Valid-name-email",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IKky6C5wDDmPj83_h3XFHfbOCSto4IT6OpRa2m-1wr4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1179593874,
+          "mode": "list",
+          "cachedResultName": "Invalid",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IKky6C5wDDmPj83_h3XFHfbOCSto4IT6OpRa2m-1wr4/edit#gid=1179593874"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        624,
+        96
+      ],
+      "id": "44632569-b92c-4e7f-9fe9-86cb3c5f0e63",
+      "name": "Append or update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Zt7zp4Vfi7dTcrrM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "errorMessage": "Name or Email or both are not valid"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        832,
+        96
+      ],
+      "id": "590ca503-1a50-4d9e-bccb-abc281ba493f",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "formTitle": "Employee Information",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name"
+            },
+            {
+              "fieldLabel": "Email"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8323541b-b45f-4270-be6f-a721055a73ee",
+      "name": "n8n Form ",
+      "webhookId": "9513f7da-152b-44a7-aea0-2bcc4d460007"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# Loop over input items and add a new field called 'my_new_field' to the JSON of each one\nfor item in _items:\n  if(\"@bluealtair\" in item[\"json\"][\"Email\"]) :\n    item[\"json\"][\"valid_email\"] = 1\n  else:\n    item[\"json\"][\"valid_email\"] = 0\n\n  if(item[\"json\"][\"Name\"].isalpha()):\n    item[\"json\"][\"valid_email\"] = 1\n  else:\n    item[\"json\"][\"valid_email\"] = 0\n    \nreturn _items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5cc9fd36-f99f-4e08-b575-2745b9059b4f",
+      "name": "Validation"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append or update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n Form ": {
+      "main": [
+        [
+          {
+            "node": "Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "adc203f4-7ccc-4d72-b16a-a70391dee336",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5912a6e00486028076cc0ae4f38742871a6a914f4cb84aefb0c66fbe2cfd09fe"
+  },
+  "id": "lPN2AlxrtYrP7k1p",
+  "tags": []
+}

@@ -1,0 +1,581 @@
+{
+  "name": "Ticket-Generation-Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.issue_text }}",
+        "options": {
+          "systemMessage": "=You are an intelligent support ticket assistant.\n\nAnalyze the user's issue and decide:\n\n1. Whether a support ticket is required (Yes or No)\n2. Severity: Low, Medium, or High\n3. Assign Team based on issue :[Hardware,Software,OS, Network]\n\nRespond ONLY in valid JSON in this format:\n\n{\n  \"create_ticket\": \"Yes\",\n  \"severity\": \"High\",\n  \"assigned_team\":\"network\"\n}\n\n",
+          "maxIterations": 3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1136,
+        -96
+      ],
+      "id": "f34a3862-b005-4ebd-a225-9f4dcf0b5589",
+      "name": "AI Agent",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "High",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "68db4883-e5b8-48b8-b32a-97756a4f05f7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "High"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9c3e3ef5-5744-4360-922f-0f9e2abfd649",
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "Medium",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Medium"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "10b4aa7e-fb46-4a4f-ac78-8c2b043f4a1c",
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "Low",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Low"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        224
+      ],
+      "id": "4971abce-d019-4b46-bd3d-b8408564d880",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -560,
+        32
+      ],
+      "id": "f4feb846-9d21-4215-bdfa-92a94d43fd74",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        -160
+      ],
+      "id": "20267f89-8bdc-4ea6-af57-335074723744",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        0
+      ],
+      "id": "91b0ae41-986b-4722-aaac-93f65312888a",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Ae3S54VwtoIa1H8Q",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create-ticket",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1360,
+        48
+      ],
+      "id": "2feb2f15-94a7-4b22-8d0c-ccac7cc02a2a",
+      "name": "GET- From Issue Diagnosis Form",
+      "webhookId": "faa95711-24aa-420e-a291-0d9e2ba2af0a"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n// Get raw AI output\nlet text = item.output || \"\";\n\n// Remove markdown ```json and ```\ntext = text\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .replace(/^[^{]*\\{/s, \"{\")\n  .replace(/\\}[^}]*$/s, \"}\")\n  .trim();\n\n// Parse cleaned JSON safely\nlet aiData = {};\ntry {\n  aiData = JSON.parse(text);\n} catch (e) {\n  throw new Error(\"Invalid AI JSON: \" + text);\n}\n\n// Generate ticket ID only if ticket required\nlet ticketId = null;\nif (aiData.create_ticket === \"Yes\") {\n  const randomNum = Math.floor(1000 + Math.random() * 9000);\n  ticketId = `TCKT-${randomNum}`;\n}\n\nreturn [\n  {\n    json: {\n      ...item,\n\n      // AI fields\n      create_ticket: aiData.create_ticket,\n      severity: aiData.severity,\n\n      // System fields\n      ticket_id: ticketId,\n      status: aiData.create_ticket === \"Yes\" ? \"Open\" : \"Closed\",\n      created_at: new Date().toISOString(),\n      resolved_at: null,\n      feedback_rating: null,\n      feedback_comment: null\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        -96
+      ],
+      "id": "c0446b2e-b542-4979-af64-902a91f9f937",
+      "name": "Ticket-Generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n// Get webhook body\nconst body = item.body || {};\n\n// Clean AI output\nlet text = item.output || \"\";\n\ntext = text\n  .replace(/```json/gi, \"\")\n  .replace(/```/g, \"\")\n  .replace(/^[^{]*\\{/s, \"{\")\n  .replace(/\\}[^}]*$/s, \"}\")\n  .trim();\n\n// Parse AI JSON\nlet aiData = {};\ntry {\n  aiData = JSON.parse(text);\n} catch (e) {\n  throw new Error(\"Invalid AI JSON: \" + text);\n}\n\n// Build clean final object\nreturn [\n  {\n    json: {\n      // From webhook\n      employee_name: body.employee_name || null,\n      employee_email: body.employee_email || null,\n      issue_text: body.issue_text || null,\n      ai_category: body.ai_category || null,\n      ai_steps: body.ai_steps || null,\n      ticket_id: $input.first().json.ticket_id || null,\n\n      // From AI\n      create_ticket: aiData.create_ticket || null,\n      severity: aiData.severity || null,\n      assigned_team: aiData.assigned_team || null,\n\n      // System fields\n      status:\n        aiData.create_ticket === \"Yes\" ? \"Open\" : \"Closed\",\n\n      created_at: item.created_at || new Date().toISOString(),\n      resolved_at: item.resolved_at || null,\n      feedback_rating: item.feedback_rating || null,\n      feedback_comment: item.feedback_comment || null\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        32
+      ],
+      "id": "4295221d-7666-4f45-bd83-7385454b59a0",
+      "name": "Proper Formating"
+    },
+    {
+      "parameters": {
+        "tableId": "tickets",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_name",
+              "fieldValue": "={{ $json.employee_name }}"
+            },
+            {
+              "fieldId": "user_email",
+              "fieldValue": "={{ $json.employee_email }}"
+            },
+            {
+              "fieldId": "issue_text",
+              "fieldValue": "={{ $json.issue_text }}"
+            },
+            {
+              "fieldId": "ai_category",
+              "fieldValue": "={{ $json.ai_category }}"
+            },
+            {
+              "fieldId": "ai_steps",
+              "fieldValue": "={{ $json.ai_steps }}"
+            },
+            {
+              "fieldId": "ai_ticket_required",
+              "fieldValue": "={{ $json.create_ticket }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "severity",
+              "fieldValue": "={{ $json.severity }}"
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "={{ $json.created_at }}"
+            },
+            {
+              "fieldId": "ticket_id",
+              "fieldValue": "={{ $('Merge').item.json.ticket_id }}"
+            },
+            {
+              "fieldId": "assigned_team",
+              "fieldValue": "={{ $json.assigned_team }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        -160
+      ],
+      "id": "0eb9f0f6-d866-4d0d-8b62-41d5cbf038c5",
+      "name": "Storing in Database",
+      "credentials": {
+        "supabaseApi": {
+          "id": "GUOz6R4eVfVDImYs",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c772322f-91cb-4991-995d-f58b71111c94",
+              "name": "ai_steps",
+              "value": "={{ $json.ai_steps }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        -160
+      ],
+      "id": "6f92a614-d195-49d1-bf0c-e7a159e784f9",
+      "name": "Sending Response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "515bd45d-44bf-478c-b1ab-aa2a0caf4d31",
+              "leftValue": "={{ $json.create_ticket }}",
+              "rightValue": "Yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -112,
+        128
+      ],
+      "id": "498ba3d4-c30e-4d8a-b94e-530798664d01",
+      "name": "If ticket is required "
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.employee_email }}",
+        "subject": "=Issue Ticket : {{ $json.issue_text }}",
+        "emailType": "text",
+        "message": "=Hello,\nThank You for approaching us with your issue. We have raised a ticket to our expert to provide with proper assistance to your issue.\n\nTicket Summary:-\nTicket_id:        {{ $json.ticket_id }}\nIssue :           {{ $json.issue_text }}\nSeverity:         {{ $json.severity }}\nCreation Time:    {{ $json.created_at }}\n\nDIY_steps:- \n{{ $json.ai_steps }}\n {{ $json.created_at }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        112,
+        32
+      ],
+      "id": "f1b616d6-9c84-4d80-9aa2-886390997b5c",
+      "name": "Sending User Mail with Details",
+      "webhookId": "5ab98347-db15-4ac4-9d67-eecc311b230a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "0T12ivFwtObKO9j8",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "vidit.limje@bluealtair.com",
+        "subject": "🚨 HIGH PRIORITY TICKET",
+        "emailType": "text",
+        "message": "=Name: {{ $json.employee_name  }}  \nEmail: {{ $json.employee_email }} \nIssue: {{ $json.issue_text }} \nSeverity: {{ $json.severity }} \nTicket_id: {{ $json.ticket_id }} \nassigned_team: {{ $json.assigned_team }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        48
+      ],
+      "id": "798ffb76-706c-452a-b879-a4623b58d5b5",
+      "name": "High Priority Ticket mail",
+      "webhookId": "4f6d9500-38c1-4e5b-9d4f-4d957a4d2ed2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "0T12ivFwtObKO9j8",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "vidit.limje@bluealtair.com",
+        "subject": "🚨 MEDIUM PRIORITY TICKET",
+        "emailType": "text",
+        "message": "=Name: {{ $json.employee_name  }}  \nEmail: {{ $json.employee_email }} \nIssue: {{ $json.issue_text }} \nSeverity: {{ $json.severity }} \nTicket_id: {{ $json.ticket_id }} \nassigned_team: {{ $json.assigned_team }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        240
+      ],
+      "id": "b8558259-15e8-4daa-8e5f-f598a468388f",
+      "name": "Medium Priority Ticket mail",
+      "webhookId": "efa6ea93-39fc-4420-bb52-38775dfdcdd8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "0T12ivFwtObKO9j8",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "vidit.limje@bluealtair.com",
+        "subject": "🚨 LOW PRIORITY TICKET",
+        "emailType": "text",
+        "message": "=Name: {{ $json.employee_name  }}  \nEmail: {{ $json.employee_email }} \nIssue: {{ $json.issue_text }} \nSeverity: {{ $json.severity }} \nTicket_id: {{ $json.ticket_id }} \nassigned_team: {{ $json.assigned_team }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        432
+      ],
+      "id": "dce15c81-c355-44ef-855a-e71bc5c039fb",
+      "name": "Low Priority Ticket Mail",
+      "webhookId": "4f6d9500-38c1-4e5b-9d4f-4d957a4d2ed2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "0T12ivFwtObKO9j8",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Ticket-Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "High Priority Ticket mail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Medium Priority Ticket mail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Low Priority Ticket Mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Proper Formating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET- From Issue Diagnosis Form": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Ticket-Generation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Proper Formating": {
+      "main": [
+        [
+          {
+            "node": "If ticket is required ",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Storing in Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Storing in Database": {
+      "main": [
+        [
+          {
+            "node": "Sending Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sending Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If ticket is required ": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sending User Mail with Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "36db5ea8-2e88-4643-bcde-e68c61c25cef",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5912a6e00486028076cc0ae4f38742871a6a914f4cb84aefb0c66fbe2cfd09fe"
+  },
+  "id": "2bYr1bkNFx6kfEiq",
+  "tags": []
+}
