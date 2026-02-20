@@ -1,0 +1,231 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Basic Details form",
+        "formDescription": "This form will get the basic details of the person and send it forward.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -352,
+        -80
+      ],
+      "id": "7a76209e-2645-45ca-b19c-af3ad38a5050",
+      "name": "On form submission",
+      "webhookId": "314cf28e-e7f7-4b0b-a20e-8da9e9e3a3d8"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1lCT_fbOOeHnbXa4_eRj7nP5WZtIT_ZlhVe7LFXmTX7w",
+          "mode": "list",
+          "cachedResultName": "n8n task 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lCT_fbOOeHnbXa4_eRj7nP5WZtIT_ZlhVe7LFXmTX7w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lCT_fbOOeHnbXa4_eRj7nP5WZtIT_ZlhVe7LFXmTX7w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.Name }}",
+            "Email": "={{ $json.Email }}"
+          },
+          "matchingColumns": [
+            "Name"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        96,
+        -176
+      ],
+      "id": "9d43a984-3f01-4e4c-9117-1be46a46326b",
+      "name": "Append name and email in google sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fi70PAMPOpwFEBR2",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8d46431b-de71-4999-b55c-70939f5e2f74",
+              "leftValue": "={{ $json.Name }}",
+              "rightValue": "^[a-zA-Z]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "dd65b062-8603-48bd-b1e0-c6cda7d70e8d",
+              "leftValue": "={{ $json.Email }}",
+              "rightValue": "@bluealtair",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -128,
+        -80
+      ],
+      "id": "1d7e4a04-7745-469b-871e-120fce153401",
+      "name": "validating the format of name an email"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Submission Failed",
+        "completionMessage": "Invalid input. Name must contain only letters and email must include @bluealtair.\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        96,
+        16
+      ],
+      "id": "bacfe127-6a43-4044-82e4-fb931ac0b467",
+      "name": "Error Message on invalid details",
+      "webhookId": "4f2c37c5-77da-4ea1-9361-01f0a9f384e5",
+      "retryOnFail": false,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Successful Submission",
+        "completionMessage": "Form submitted successfully",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        320,
+        -176
+      ],
+      "id": "75f409d3-2d04-4956-81f1-0637d82c1f85",
+      "name": "Form added successfully message",
+      "webhookId": "26f2806d-d189-46db-899a-369c2e96fe19"
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "validating the format of name an email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append name and email in google sheet": {
+      "main": [
+        [
+          {
+            "node": "Form added successfully message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validating the format of name an email": {
+      "main": [
+        [
+          {
+            "node": "Append name and email in google sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Message on invalid details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Message on invalid details": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cf3e476c962230f546f4d4b5966e70d0aceba5899c08de428c9cddb0619506e1"
+  }
+}
