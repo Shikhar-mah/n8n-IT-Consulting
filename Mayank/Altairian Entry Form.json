@@ -1,0 +1,305 @@
+{
+  "name": "Altairian Entry Form",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8622b112-114f-469a-b729-1cd7cc11571d",
+              "leftValue": "={{ $json.Name }}",
+              "rightValue": "^[A-Za-z ]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "c292b7e6-15f2-43f9-a3ee-61114c4c8303",
+              "leftValue": "={{ $json.Email }}",
+              "rightValue": "@bluealtair.com",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "de3aef4d-687b-4962-823a-d2cd2a09b25b",
+      "name": "Validate Name & Email"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Validation Failed: Name must contain only alphabets and Email must contain @bluealtair"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        672,
+        96
+      ],
+      "id": "0f0fc562-01ee-4b08-bf6b-593629d7c718",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "formTitle": "Altairian Data Form",
+        "formDescription": "Basic employee data form",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "placeholder": "Enter your name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "placeholder": "Enter your email"
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ea39e8f4-f5a1-48df-a462-6b6cf969f2fc",
+      "name": "Altairian Login From",
+      "webhookId": "7730bbb8-404e-4643-a0e7-636c0e2a599c"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1PQpGEHkx-TYZwlxgllZ83RkI-E_qemAwa7BUSVyZORo",
+          "mode": "list",
+          "cachedResultName": "Employee_Form_Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PQpGEHkx-TYZwlxgllZ83RkI-E_qemAwa7BUSVyZORo/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1684905007,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PQpGEHkx-TYZwlxgllZ83RkI-E_qemAwa7BUSVyZORo/edit#gid=1684905007"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.Name }}",
+            "Email": "={{ $json.Email }}",
+            "Reason": "Wrong Email or Name"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        96
+      ],
+      "id": "dec738ef-6926-4461-92a7-31f763166240",
+      "name": "Invalid Entry",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VEOS5IVPUYd7oMV0",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1PQpGEHkx-TYZwlxgllZ83RkI-E_qemAwa7BUSVyZORo",
+          "mode": "list",
+          "cachedResultName": "Employee_Form_Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PQpGEHkx-TYZwlxgllZ83RkI-E_qemAwa7BUSVyZORo/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PQpGEHkx-TYZwlxgllZ83RkI-E_qemAwa7BUSVyZORo/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.Name }}",
+            "Email": "={{ $json.Email }}",
+            "CreatedAt": "={{ $now }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CreatedAt",
+              "displayName": "CreatedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        -96
+      ],
+      "id": "96e52127-032f-4095-881d-08deb1d89812",
+      "name": "Valid Entry",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VEOS5IVPUYd7oMV0",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Validate Name & Email": {
+      "main": [
+        [
+          {
+            "node": "Valid Entry",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Altairian Login From": {
+      "main": [
+        [
+          {
+            "node": "Validate Name & Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Entry": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Entry": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a2614499-4bd3-49b3-8867-1ba8454fe36d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "69204e3ce1b90215de4dac1a055d202ea466bfacda8f89c07d532b152cba6d2a"
+  },
+  "id": "YpBsSFuz2L1H3ciR",
+  "tags": []
+}

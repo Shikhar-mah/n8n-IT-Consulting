@@ -1,0 +1,392 @@
+{
+  "name": "Notify-When Stock Available",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10,
+              "triggerAtMinute": null
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        -240
+      ],
+      "id": "65639a5d-8950-4cf0-933a-5900477b3d91",
+      "name": "Check Restock Every 10 Min"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        528,
+        -240
+      ],
+      "id": "efc2a371-d17f-4ce8-9f96-ae6d73e367e7",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "sendTo": "mokheremayank12@gmail.com",
+        "subject": "Stock Available Now – Please Request Again",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 650px; margin: auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;\">\n  \n  <h2 style=\"color: #16a34a; margin-bottom: 5px;\">✅ Stock Available Now</h2>\n  <p style=\"font-size: 14px; color: #374151; margin-top: 0;\">\n    Hello <b>{{$node[\"Keep Request Data\"].json[\"user_name\"]}}</b>,\n  </p>\n\n  <p style=\"font-size: 14px; color: #374151;\">\n    Good news! The laptop stock you requested is now available. You can submit your request again to proceed with allocation.\n  </p>\n\n  <div style=\"background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;\">\n    <h3 style=\"margin-top: 0; color: #111827;\">📌 Request Details</h3>\n    <p style=\"margin: 6px 0; font-size: 14px;\"><b>User Name:</b> {{$node[\"Keep Request Data\"].json[\"user_name\"]}}</p>\n    <p style=\"margin: 6px 0; font-size: 14px;\"><b>User Email:</b> {{$node[\"Keep Request Data\"].json[\"user_email\"]}}</p>\n    <p style=\"margin: 6px 0; font-size: 14px;\"><b>Laptop Type:</b> {{$node[\"Keep Request Data\"].json[\"laptop_type\"]}}</p>\n  </div>\n\n  <p style=\"font-size: 14px; color: #374151; margin-top: 18px;\">\n    <b>Next Step:</b> Please submit the laptop request form again so the system can allocate the device(s).\n  </p>\n\n  <p style=\"font-size: 14px; color: #6b7280;\">\n    If you no longer require the laptop, you may ignore this email.\n  </p>\n\n  <hr style=\"border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;\" />\n\n  <p style=\"font-size: 13px; color: #6b7280; margin-bottom: 0;\">\n    Regards,<br>\n    <b>IT Support Team</b><br>\n    BlueAltair IT Operations\n  </p>\n\n</div>\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        -240
+      ],
+      "id": "217720c5-9364-4474-996a-eb42065078d1",
+      "name": "Send a message",
+      "webhookId": "c932e6a7-3da9-417c-900c-0bd13a9d862e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zy7QgC4m4ZXqHEAc",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "restock_requests",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Get Pending Requests').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "notified"
+            },
+            {
+              "fieldId": "notified_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        -240
+      ],
+      "id": "b7d0a342-3409-4925-a60a-0d0efcc8b4c5",
+      "name": "Mark Request Notified",
+      "credentials": {
+        "supabaseApi": {
+          "id": "DI0Lj5Q23NCacfz2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "inventory",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "laptop_type",
+              "condition": "eq",
+              "keyValue": "={{ $json.laptop_type }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "required_stock",
+              "fieldValue": "0"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        16
+      ],
+      "id": "5e588a7f-4fe9-4348-8b77-e255c98fb005",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "DI0Lj5Q23NCacfz2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5e5bab21-5918-4892-b1be-3ddf97b62e7a",
+              "name": "user_email",
+              "value": "={{ $('Get Pending Requests').item.json.user_email }}",
+              "type": "string"
+            },
+            {
+              "id": "802e1ea8-4577-4284-9091-6035578f3ad9",
+              "name": "user_name",
+              "value": "={{ $('Get Pending Requests').item.json.user_name }}",
+              "type": "string"
+            },
+            {
+              "id": "529dc3af-8912-4bf0-b1ef-7a95e44b07c3",
+              "name": "laptop_type",
+              "value": "={{$json.laptop_type}}",
+              "type": "string"
+            },
+            {
+              "id": "c4771ca8-c7f0-4ad7-92bb-5c8a4891c967",
+              "name": "requested_quantity",
+              "value": "={{ $('Get Pending Requests').item.json.requested_quantity }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        -240
+      ],
+      "id": "9ca95e7d-1ba2-42c1-91a5-5e26c2bbba81",
+      "name": "Keep Request Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8404dc44-abce-466f-8083-80e0d90e6673",
+              "leftValue": "={{$node[\"Get Inventory For This Request\"].json[\"available_stock\"]}}",
+              "rightValue": "={{ $('Get Pending Requests').item.json.requested_quantity }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        928,
+        -112
+      ],
+      "id": "94f09465-22a2-43ff-b048-251adce348fc",
+      "name": "Stock Enough For This Request?"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "inventory",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "laptop_type",
+              "keyValue": "={{$json.laptop_type}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        736,
+        -112
+      ],
+      "id": "34eeb198-d8a7-4ad3-9260-009fcca46532",
+      "name": "Get Inventory For This Request",
+      "credentials": {
+        "supabaseApi": {
+          "id": "DI0Lj5Q23NCacfz2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "restock_requests",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "keyValue": "pending"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        272,
+        -240
+      ],
+      "id": "7196fd22-c2e7-40fe-ac73-8972da3657c2",
+      "name": "Get Pending Requests",
+      "credentials": {
+        "supabaseApi": {
+          "id": "DI0Lj5Q23NCacfz2",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Check Restock Every 10 Min": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Get Inventory For This Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Mark Request Notified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Request Notified": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Request Data": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stock Enough For This Request?": {
+      "main": [
+        [
+          {
+            "node": "Keep Request Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Inventory For This Request": {
+      "main": [
+        [
+          {
+            "node": "Stock Enough For This Request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Requests": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3b0d3886-2408-413c-9d18-3e83afb80451",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "69204e3ce1b90215de4dac1a055d202ea466bfacda8f89c07d532b152cba6d2a"
+  },
+  "id": "rDkG5Q3p94ZmFKVu",
+  "tags": []
+}
