@@ -1,0 +1,470 @@
+{
+  "name": "Issue-Diagnosis-Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.issue_description }}",
+        "options": {
+          "systemMessage": "You are an IT support triage AI.\n\nYour scope is STRICTLY limited to IT support issues related to:\n- hardware\n- software\n- operating systems\n- network\n\nIf the user query is NOT an IT issue, respond with ONLY this JSON:\n{\n  \"category\": \"not_it_issue\",\n  \"confidence\": 0,\n  \"reason\": \"I am not built to answer these types of questions.\"\n}\n\nIf it IS an IT issue, classify it into ONE category:\nhardware, software, os, network\n\nUser description:\n{{ $json.body.issue_description }}\n\nImage: null\n\nReturn ONLY valid JSON:\n{\n  \"category\": \"hardware | software | os | network\",\n  \"confidence\": 0-100,\n  \"reason\": \"short technical reason\"\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        256,
+        464
+      ],
+      "id": "25464131-f040-452a-a673-d01c5e7490bb",
+      "name": "Classifier_Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}",
+        "options": {
+          "systemMessage": "You are an expert IT support engineer.\n\nIssue Description:\n{{ $json.output }}\n\nProvide:\n- category\n- probable_causes (array of short strings)\n- troubleshooting_steps (ONE single multiline string, numbered)\n- escalation_needed (true/false)\n\nReturn ONLY valid JSON.\nDo not return arrays for troubleshooting_steps.\nDo not return objects for steps.\n\nFormat:\n{\n  \"category\": \"hardware | software | os | network\",\n  \"probable_causes\": [\"\", \"\"],\n  \"troubleshooting_steps\": \"1. Step one\\n2. Step two\\n3. Step three\",\n  \"escalation_needed\": true/false\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        880,
+        304
+      ],
+      "id": "43fe1f02-c40c-4843-a154-7ef74ebcd67c",
+      "name": "Troubleshooting_Agent",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1200,
+        192
+      ],
+      "id": "02c3d6f5-70da-4906-9057-e4f9f629c7d1",
+      "name": "Merging_Info"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-safeguard-20b",
+        "options": {
+          "maxTokensToSample": 2500
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        912,
+        448
+      ],
+      "id": "c4c04b7c-364b-4b33-a879-551f88117c6b",
+      "name": "Groq_Troubleshoting_Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Ae3S54VwtoIa1H8Q",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "maxTokensToSample": 2500
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        328,
+        688
+      ],
+      "id": "1166f618-15c7-4c19-acf1-ec74d7e22124",
+      "name": "Groq_Classifier_Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Ae3S54VwtoIa1H8Q",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://viditlimje.app.n8n.cloud/webhook/create-ticket",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "employee_name",
+              "value": "={{ $json.FullName}}"
+            },
+            {
+              "name": "employee_email",
+              "value": "={{ $json.Email }}"
+            },
+            {
+              "name": "issue_text",
+              "value": "={{ $json.IssueDescription }}"
+            },
+            {
+              "name": "ai_category",
+              "value": "={{ $json.category }}"
+            },
+            {
+              "name": "ai_steps",
+              "value": "={{ $json.troubleshooting_steps }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1632,
+        96
+      ],
+      "id": "c7deafbc-b725-4b67-9046-ef20624ae296",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "dde1c4cf-c2a7-47a8-83c8-0cb4e2402657",
+              "leftValue": "={{ JSON.parse($json.output).category }}",
+              "rightValue": "not_it_issue",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        608,
+        464
+      ],
+      "id": "07be9c6b-ac26-480c-8790-71b211ac85ef",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "issue-diagnosis",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        48,
+        176
+      ],
+      "id": "bad25950-cef6-413f-ac57-3c8749d295e5",
+      "name": "GET- Issue Diagnosis Form",
+      "webhookId": "f589a574-ae2c-4567-bb85-323f887211df"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ef3e274f-634a-4e15-a7e8-d77766653fb0",
+              "name": "Solution",
+              "value": "=Please Consult other applications for your issue. This application is only for IT related issue.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        608
+      ],
+      "id": "7bc18fcc-8a15-49f9-8e54-961cf09b2143",
+      "name": "Non-Valid-Response"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1184,
+        608
+      ],
+      "id": "8fa242f6-47ca-4c94-8f90-0bb1bdea2e1a",
+      "name": "Non-Valid-Response-Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiRaw = items.find(i => i.json.output)?.json.output;\n\nconst ai = JSON.parse(aiRaw);\n\nreturn [\n  {\n    json: {\n      \n          FullName:$('GET- Issue Diagnosis Form').first().json.body.full_name,\n      IssueDescription:$('GET- Issue Diagnosis Form').first().json.body.issue_description,\n      Email:$('GET- Issue Diagnosis Form').first().json.body.email,\n      category: ai.category,\n      probable_causes: ai.probable_causes,\n      troubleshooting_steps: ai.troubleshooting_steps,\n      escalation_needed: ai.escalation_needed\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        192
+      ],
+      "id": "ba639034-6bfe-44dc-8b35-7304afe7f192",
+      "name": "Converting to Proper Format"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5f868a62-a13c-495a-8e18-69d6ced3b890",
+              "name": "troubleshooting_steps",
+              "value": "={{ $json.troubleshooting_steps }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1632,
+        288
+      ],
+      "id": "bfa75cb7-efd8-48f9-9223-84c44de8d93c",
+      "name": "Sending Steps to User"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1856,
+        288
+      ],
+      "id": "ac8b0579-7db3-45d5-933d-0618912bfaba",
+      "name": "Troubleshooting_steps-frontend"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "67ceeb39-9b2e-4126-9fbb-b494ff9265f6",
+              "leftValue": "{{ JSON.parse($json.output).category }}",
+              "rightValue": "not_it_issue",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        816,
+        176
+      ],
+      "id": "6d11b253-ba4b-4f5a-9d5e-a4a6ebef9b85",
+      "name": "If1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Classifier_Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Troubleshooting_Agent": {
+      "main": [
+        [
+          {
+            "node": "Merging_Info",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merging_Info": {
+      "main": [
+        [
+          {
+            "node": "Converting to Proper Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq_Troubleshoting_Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Troubleshooting_Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq_Classifier_Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classifier_Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Troubleshooting_Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Non-Valid-Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET- Issue Diagnosis Form": {
+      "main": [
+        [
+          {
+            "node": "Classifier_Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Non-Valid-Response": {
+      "main": [
+        [
+          {
+            "node": "Non-Valid-Response-Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converting to Proper Format": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sending Steps to User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sending Steps to User": {
+      "main": [
+        [
+          {
+            "node": "Troubleshooting_steps-frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Merging_Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "edd592e7-cd49-4df4-9b98-6f0d4cf61d06",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5912a6e00486028076cc0ae4f38742871a6a914f4cb84aefb0c66fbe2cfd09fe"
+  },
+  "id": "RoYnTf4Jar6MonWj",
+  "tags": []
+}
