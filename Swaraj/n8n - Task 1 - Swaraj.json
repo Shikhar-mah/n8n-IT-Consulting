@@ -1,0 +1,246 @@
+{
+  "name": "n8n Login",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Login",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ed3cc07f-2237-40d6-a31f-89f92aab11fa",
+      "name": "On form submission",
+      "webhookId": "55e770f9-d393-4340-a3b0-0544a1e5ba3f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const name = $json.Name;\nconst email = $json.Email;\n\nconst nameValid = /^[A-Za-z\\s]+$/.test(name);\nconst emailValid = email.includes(\"@bluealtair\");\n\nreturn [{\n  json: {\n    Name: name,\n    Email: email,\n    nameValid,\n    emailValid,\n    isValid: nameValid && emailValid\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d625a657-4008-4ca5-92ce-e05f47a39b3a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bce9b3ee-9730-42aa-bf30-55d7e2719f50",
+              "leftValue": "={{ $json.isValid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        400,
+        16
+      ],
+      "id": "4df38ad6-b1c7-4291-8b66-6226d02118ba",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1uy55g9VIT_d1yATpdGHSXPtqD9X12yPjOwUoL46PZBM",
+          "mode": "list",
+          "cachedResultName": "n8n Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uy55g9VIT_d1yATpdGHSXPtqD9X12yPjOwUoL46PZBM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uy55g9VIT_d1yATpdGHSXPtqD9X12yPjOwUoL46PZBM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.Name }}",
+            "Email": "={{ $json.Email }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        608,
+        -80
+      ],
+      "id": "0cfec7d2-75e9-45aa-8140-8926ffafcf64",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Cpj4enOlhutir7Gy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Submission Failed",
+        "completionMessage": "Invalid Data must write proper name and email contains @bluealtair",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        608,
+        80
+      ],
+      "id": "aa653dd0-f283-404b-997c-11580512feed",
+      "name": "Form",
+      "webhookId": "b8d82219-6fcd-4d34-b941-f4f1c75e16ce"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Successfully Inserted",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        816,
+        -64
+      ],
+      "id": "57268768-b81c-4c69-a96c-d81919f9e0f4",
+      "name": "Form1",
+      "webhookId": "6f358077-8e66-4e6f-8ed8-fe0f12610d4c"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Form1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c661319c-6aca-400b-8349-037310ef94e0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3fff68494b516754d744da2863ff8886fe692a373eaadc383c1b606e42f4a185"
+  },
+  "id": "5CG59j9IXRgGZY5u",
+  "tags": []
+}

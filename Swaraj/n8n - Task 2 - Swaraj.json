@@ -1,0 +1,204 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an IT Asset Inventory Communication Assistant.\n\nIMPORTANT LOGIC\nGenerate an email ONLY if Available Stock is LESS THAN 5.\nIf Available Stock is 5 or more → return an empty response:\n{}\n\n\nSYSTEM DATA\nLaptop Type: {{$json[\"laptop_type\"]}}\nTotal Stock: {{$json[\"total_stock\"]}}\nAvailable Stock: {{$json[\"available_stock\"]}}\nLast Updated: {{$json[\"updated_at\"]}}\n\nBUSINESS RULES\n\nDetermine inventory status automatically:\n\nIF Available Stock <= 2 → Priority = Critical\nIF Available Stock <= 4 → Priority = High\n\nAction Required = Yes (because stock is below safe level)\n\nTARGET GROUP RULES\nAll inventory alerts → Target Group = IT Team\n\nSUBJECT CREATION RULE (VERY IMPORTANT)\n\nCreate a unique professional subject using this structure:\n\nPriority + Inventory Alert + Laptop Type + Low Stock\n\nExamples:\nCritical Inventory Alert – Dell Laptop Low Stock\nHigh Inventory Alert – HP Laptop Limited Availability\n\nThe subject must NOT be generic.\nThe subject must be specific to the laptop type and stock level.\n\nEMAIL CONTENT REQUIREMENTS\n\nInclude:\n✔ Summary of stock shortage\n✔ Current availability vs total stock\n✔ Impact on operations\n✔ Required IT action\n✔ Priority indication\n✔ Last updated time\n✔ Professional IT support closing\n\nTone:\nProfessional IT communication\nClear and concise\nSuitable for company employees\n\nOUTPUT FORMAT (STRICT)\n\nReturn ONLY valid JSON. No extra text.\n\n{\n\"Team\": \"IT Team\",\n\"Subject\": \"Generated subject following rules above\",\n\"Message\": \"HTML formatted email body\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        400,
+        0
+      ],
+      "id": "efe481f4-333e-48f9-b313-b63a614668aa",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "email",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -112,
+        0
+      ],
+      "id": "a5b373d2-4355-462c-b043-a2bed36b5791",
+      "name": "Webhook",
+      "webhookId": "de75b5b2-8ebf-461f-841a-517497ee333b"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4e20b4e6-c7f9-400e-a254-23bba9c2d382",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "={}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        736,
+        0
+      ],
+      "id": "2c314b2d-9be1-49e9-b943-a1b824336703",
+      "name": "Sending mail to updated inventory"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "inventory"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        160,
+        0
+      ],
+      "id": "19e0fa74-1c86-47bd-b0f2-e2e38c1cba88",
+      "name": "Get all rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "HPHGeWdKKt1GY6LG",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "swarajgujar022@gmail.com",
+        "subject": "={{ JSON.parse($json.output).Subject }}",
+        "message": "={{ JSON.parse($json.output).Message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        16
+      ],
+      "id": "e2a78f1d-5ed9-4639-b7d1-c966c765e4ed",
+      "name": "Mail Sender",
+      "webhookId": "c2c686ab-88d1-4620-b37a-437f45003247",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "684BH6salWLFi0oc",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-safeguard-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        400,
+        224
+      ],
+      "id": "655fd891-30d7-41dd-ba69-b16b626175b2",
+      "name": "Email Generated",
+      "credentials": {
+        "groqApi": {
+          "id": "CgAyzeIhl0MOadCE",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Sending mail to updated inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get all rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sending mail to updated inventory": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Mail Sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all rows": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Generated": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a5cea19a-db65-4295-84e1-d16744f5709e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3fff68494b516754d744da2863ff8886fe692a373eaadc383c1b606e42f4a185"
+  },
+  "id": "bjM8JHJTdGR1zFGi",
+  "tags": []
+}
